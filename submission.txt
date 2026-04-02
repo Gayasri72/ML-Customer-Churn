@@ -1,0 +1,3 @@
+Dataset Link: https://www.kaggle.com/datasets/blastchar/telco-customer-churn
+GitHub Repository: https://github.com/Gayasri72/ML-Customer-Churn
+YouTube Video Presentation: [Insert YouTube Link Here]
