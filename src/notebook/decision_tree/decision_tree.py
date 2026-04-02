@@ -69,7 +69,15 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 print("Train:", X_train.shape)
 print("Test:", X_test.shape)
-print(y_train.value_counts())
+print("Before SMOTE:", y_train.value_counts().to_dict())
+
+# ======================
+# 4b. HANDLE CLASS IMBALANCE WITH SMOTE
+# ======================
+smote = SMOTE(random_state=42)
+X_train_sm, y_train_sm = smote.fit_resample(X_train, y_train)
+
+print("After SMOTE:", pd.Series(y_train_sm).value_counts().to_dict())
 
 
 
@@ -86,9 +94,9 @@ model = DecisionTreeClassifier(
     random_state=42
 )
 
-model.fit(X_train, y_train)
+model.fit(X_train_sm, y_train_sm)
 
-print("Model trained")
+print("Model trained (on SMOTE-balanced data)")
 
 #==========
 #PREDICTION
@@ -175,7 +183,7 @@ plt.show()
 # 10. CROSS VALIDATION
 # ===================
 
-scores = cross_val_score(model, X, y, cv=5)
+scores = cross_val_score(model, X_train_sm, y_train_sm, cv=5)
 
 print("CV Scores:", scores)
 print("Mean CV F1 Score:", scores.mean())
@@ -202,7 +210,7 @@ grid = GridSearchCV(
     scoring="f1"
 )
 
-grid.fit(X_train, y_train)
+grid.fit(X_train_sm, y_train_sm)
 
 print("Best Parameters:", grid.best_params_)
 
@@ -224,7 +232,7 @@ best_model = grid.best_estimator_
 # 13. OVERFITTING CHECK
 # =====================
 
-train_acc = best_model.score(X_train, y_train)
+train_acc = best_model.score(X_train_sm, y_train_sm)
 test_acc = best_model.score(X_test, y_test)
 
 print("Train Accuracy:", train_acc)

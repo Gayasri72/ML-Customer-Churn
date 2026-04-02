@@ -36,6 +36,8 @@ from sklearn.metrics import (
 import warnings
 warnings.filterwarnings('ignore')
 
+from imblearn.over_sampling import SMOTE
+
 # Plot style
 sns.set_style('whitegrid')
 plt.rcParams['figure.figsize'] = (10, 6)
@@ -95,8 +97,14 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 print(f'Training set: {X_train.shape[0]} samples')
 print(f'Testing set:  {X_test.shape[0]} samples')
-print(f'\nTraining churn rate: {y_train.mean() * 100:.2f}%')
-print(f'Testing churn rate:  {y_test.mean() * 100:.2f}%')
+print(f'\nBefore SMOTE — Training churn rate: {y_train.mean() * 100:.2f}%')
+
+# Apply SMOTE to balance training data
+smote = SMOTE(random_state=42)
+X_train_sm, y_train_sm = smote.fit_resample(X_train, y_train)
+
+print(f'After SMOTE — Training set: {X_train_sm.shape[0]} samples')
+print(f'After SMOTE — Class distribution: {pd.Series(y_train_sm).value_counts().to_dict()}')
 
 
 # ## 5. Find the Optimal K (Elbow Method)
@@ -113,8 +121,8 @@ k_scores_acc = []
 
 for k in k_range:
     knn = KNeighborsClassifier(n_neighbors=k)
-    f1  = cross_val_score(knn, X_train, y_train, cv=5, scoring='f1').mean()
-    acc = cross_val_score(knn, X_train, y_train, cv=5, scoring='accuracy').mean()
+    f1  = cross_val_score(knn, X_train_sm, y_train_sm, cv=5, scoring='f1').mean()
+    acc = cross_val_score(knn, X_train_sm, y_train_sm, cv=5, scoring='accuracy').mean()
     k_scores_f1.append(f1)
     k_scores_acc.append(acc)
 
@@ -159,7 +167,7 @@ plt.show()
 
 # Train with default K=5 as a baseline
 knn_default = KNeighborsClassifier(n_neighbors=5)
-knn_default.fit(X_train, y_train)
+knn_default.fit(X_train_sm, y_train_sm)
 
 y_pred_default = knn_default.predict(X_test)
 
@@ -196,7 +204,7 @@ grid_search = GridSearchCV(
 )
 
 print('Starting GridSearchCV...')
-grid_search.fit(X_train, y_train)
+grid_search.fit(X_train_sm, y_train_sm)
 
 print(f'\nBest Parameters: {grid_search.best_params_}')
 print(f'Best CV F1 Score: {grid_search.best_score_:.4f}')
@@ -230,6 +238,11 @@ print(f'  Recall:    {recall:.4f}  ({recall * 100:.2f}%)')
 print(f'  F1 Score:  {f1:.4f}  ({f1 * 100:.2f}%)')
 print(f'  AUC-ROC:   {auc_score:.4f}  ({auc_score * 100:.2f}%)')
 print('=' * 45)
+
+# === 5-Fold Cross-Validation on SMOTE data ===
+cv_scores = cross_val_score(best_knn, X_train_sm, y_train_sm, cv=5, scoring='f1')
+print(f'\n5-Fold CV F1 Scores: {cv_scores.round(4)}')
+print(f'Mean CV F1 Score:    {cv_scores.mean():.4f} ± {cv_scores.std():.4f}')
 
 
 # In[11]:
