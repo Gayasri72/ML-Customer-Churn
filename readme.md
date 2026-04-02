@@ -25,10 +25,10 @@ Telco Customer Churn dataset (Kaggle)
 ## 👨‍👩‍👧‍👦 Team Responsibilities
 
 * Preprocessing: gayasri pethum
-* Logistic Regression: Member 1
-* Decision Tree: Member 2
-* KNN : Member: 3
-* Random Forest: Member 4
+* Logistic Regression: logistic regression
+* Decision Tree: samidi
+* KNN : Member: Nethmina
+* Random Forest: gayasri
  
 
 ## 🚀 How to Run
