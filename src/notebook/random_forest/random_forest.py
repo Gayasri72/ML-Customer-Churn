@@ -1,0 +1,262 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    classification_report,
+    confusion_matrix,
+    roc_curve,
+    roc_auc_score
+)
+
+import warnings
+warnings.filterwarnings('ignore')
+
+from imblearn.over_sampling import SMOTE
+from sklearn.model_selection import cross_val_score
+
+# Plot style
+sns.set_style('whitegrid')
+plt.rcParams['figure.figsize'] = (10, 6)
+plt.rcParams['font.size'] = 12
+
+print('Libraries imported successfully!')
+
+# Load the preprocessed dataset
+df = pd.read_csv('../../../data/processed/churn_processed.csv')
+
+print(f'Dataset shape: {df.shape}')
+print(f'Number of features: {df.shape[1] - 1}')
+print(f'Number of samples: {df.shape[0]}')
+df.head()
+
+# Check target distribution
+print('Target Distribution:')
+print(df['Churn'].value_counts())
+print(f'\nChurn rate: {df["Churn"].mean() * 100:.2f}%')
+
+# Separate features and target
+X = df.drop('Churn', axis=1)
+y = df['Churn']
+
+print(f'Features shape: {X.shape}')
+print(f'Target shape:   {y.shape}')
+print(f'\nFeature columns: {list(X.columns)}')
+
+# Split data into training and testing sets (80/20)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+print(f'Training set: {X_train.shape[0]} samples')
+print(f'Testing set:  {X_test.shape[0]} samples')
+print(f'\nBefore SMOTE — Training churn rate: {y_train.mean() * 100:.2f}%')
+
+# Apply SMOTE to balance training data
+smote = SMOTE(random_state=42)
+X_train_sm, y_train_sm = smote.fit_resample(X_train, y_train)
+
+print(f'After SMOTE — Training set: {X_train_sm.shape[0]} samples')
+print(f'After SMOTE — Class distribution: {pd.Series(y_train_sm).value_counts().to_dict()}')
+
+# Train with default parameters first
+rf_default = RandomForestClassifier(random_state=42, n_jobs=-1)
+rf_default.fit(X_train_sm, y_train_sm)
+
+# Predictions
+y_pred_default = rf_default.predict(X_test)
+
+# Evaluate
+print('=== Default Random Forest Results ===')
+print(f'Accuracy:  {accuracy_score(y_test, y_pred_default):.4f}')
+print(f'Precision: {precision_score(y_test, y_pred_default):.4f}')
+print(f'Recall:    {recall_score(y_test, y_pred_default):.4f}')
+print(f'F1 Score:  {f1_score(y_test, y_pred_default):.4f}')
+
+# Define parameter grid
+param_grid = {
+    'n_estimators': [100, 200, 300],
+    'max_depth': [10, 20, 30, None],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4]
+}
+
+# Grid search with cross-validation
+rf = RandomForestClassifier(random_state=42, n_jobs=-1)
+
+grid_search = GridSearchCV(
+    estimator=rf,
+    param_grid=param_grid,
+    cv=5,
+    scoring='f1',
+    n_jobs=-1,
+    verbose=1
+)
+
+print('Starting GridSearchCV... (this may take a few minutes)')
+grid_search.fit(X_train_sm, y_train_sm)
+
+print(f'\nBest Parameters: {grid_search.best_params_}')
+print(f'Best CV F1 Score: {grid_search.best_score_:.4f}')
+
+# Get the best model
+best_rf = grid_search.best_estimator_
+
+# Predictions with the best model
+y_pred = best_rf.predict(X_test)
+y_pred_proba = best_rf.predict_proba(X_test)[:, 1]
+
+# === Core Metrics ===
+accuracy  = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred)
+recall    = recall_score(y_test, y_pred)
+f1        = f1_score(y_test, y_pred)
+auc_score = roc_auc_score(y_test, y_pred_proba)
+
+print('=' * 45)
+print('  TUNED RANDOM FOREST — EVALUATION RESULTS')
+print('=' * 45)
+print(f'  Accuracy:  {accuracy:.4f}  ({accuracy * 100:.2f}%)')
+print(f'  Precision: {precision:.4f}  ({precision * 100:.2f}%)')
+print(f'  Recall:    {recall:.4f}  ({recall * 100:.2f}%)')
+print(f'  F1 Score:  {f1:.4f}  ({f1 * 100:.2f}%)')
+print(f'  AUC-ROC:   {auc_score:.4f}  ({auc_score * 100:.2f}%)')
+print('=' * 45)
+
+# === 5-Fold Cross-Validation on SMOTE data ===
+cv_scores = cross_val_score(best_rf, X_train_sm, y_train_sm, cv=5, scoring='f1')
+print(f'\n5-Fold CV F1 Scores: {cv_scores.round(4)}')
+print(f'Mean CV F1 Score:    {cv_scores.mean():.4f} ± {cv_scores.std():.4f}')
+
+# Detailed classification report
+print('\nDetailed Classification Report:\n')
+print(classification_report(y_test, y_pred, target_names=['Not Churn (0)', 'Churn (1)']))
+
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
+
+fig, ax = plt.subplots(figsize=(8, 6))
+sns.heatmap(
+    cm, annot=True, fmt='d', cmap='Blues',
+    xticklabels=['Not Churn', 'Churn'],
+    yticklabels=['Not Churn', 'Churn'],
+    linewidths=1, linecolor='black',
+    annot_kws={'size': 16}
+)
+ax.set_xlabel('Predicted', fontsize=14)
+ax.set_ylabel('Actual', fontsize=14)
+ax.set_title('Confusion Matrix — Random Forest', fontsize=16, fontweight='bold')
+plt.tight_layout()
+plt.show()
+
+# ROC Curve
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
+
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.plot(fpr, tpr, color='#2196F3', lw=2.5, label=f'Random Forest (AUC = {auc_score:.4f})')
+ax.plot([0, 1], [0, 1], color='gray', lw=1.5, linestyle='--', label='Random Guess')
+ax.fill_between(fpr, tpr, alpha=0.1, color='#2196F3')
+ax.set_xlabel('False Positive Rate', fontsize=14)
+ax.set_ylabel('True Positive Rate', fontsize=14)
+ax.set_title('ROC Curve — Random Forest', fontsize=16, fontweight='bold')
+ax.legend(loc='lower right', fontsize=12)
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+# Feature Importance (Top 15)
+importances = best_rf.feature_importances_
+feature_importance = pd.DataFrame({
+    'Feature': X.columns,
+    'Importance': importances
+}).sort_values('Importance', ascending=True)
+
+# Plot top 15 features
+top_n = 15
+top_features = feature_importance.tail(top_n)
+
+fig, ax = plt.subplots(figsize=(10, 8))
+colors = plt.cm.viridis(np.linspace(0.2, 0.9, top_n))
+ax.barh(top_features['Feature'], top_features['Importance'], color=colors, edgecolor='black', linewidth=0.5)
+ax.set_xlabel('Importance', fontsize=14)
+ax.set_ylabel('Feature', fontsize=14)
+ax.set_title(f'Top {top_n} Feature Importances — Random Forest', fontsize=16, fontweight='bold')
+ax.grid(True, axis='x', alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+# Compare default vs tuned model
+metrics_names = ['Accuracy', 'Precision', 'Recall', 'F1 Score']
+
+default_scores = [
+    accuracy_score(y_test, y_pred_default),
+    precision_score(y_test, y_pred_default),
+    recall_score(y_test, y_pred_default),
+    f1_score(y_test, y_pred_default)
+]
+
+tuned_scores = [accuracy, precision, recall, f1]
+
+x = np.arange(len(metrics_names))
+width = 0.35
+
+fig, ax = plt.subplots(figsize=(10, 6))
+bars1 = ax.bar(x - width/2, default_scores, width, label='Default RF', color='#FF7043', edgecolor='black', linewidth=0.5)
+bars2 = ax.bar(x + width/2, tuned_scores, width, label='Tuned RF', color='#42A5F5', edgecolor='black', linewidth=0.5)
+
+# Add value labels on bars
+for bar in bars1:
+    height = bar.get_height()
+    ax.annotate(f'{height:.3f}', xy=(bar.get_x() + bar.get_width()/2, height),
+                xytext=(0, 5), textcoords='offset points', ha='center', fontsize=10)
+
+for bar in bars2:
+    height = bar.get_height()
+    ax.annotate(f'{height:.3f}', xy=(bar.get_x() + bar.get_width()/2, height),
+                xytext=(0, 5), textcoords='offset points', ha='center', fontsize=10)
+
+ax.set_ylabel('Score', fontsize=14)
+ax.set_title('Default vs Tuned Random Forest', fontsize=16, fontweight='bold')
+ax.set_xticks(x)
+ax.set_xticklabels(metrics_names, fontsize=12)
+ax.legend(fontsize=12)
+ax.set_ylim(0, 1.15)
+ax.grid(True, axis='y', alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+# Final summary table
+summary = pd.DataFrame({
+    'Metric': ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC-ROC'],
+    'Default RF': [
+        accuracy_score(y_test, y_pred_default),
+        precision_score(y_test, y_pred_default),
+        recall_score(y_test, y_pred_default),
+        f1_score(y_test, y_pred_default),
+        roc_auc_score(y_test, rf_default.predict_proba(X_test)[:, 1])
+    ],
+    'Tuned RF': [accuracy, precision, recall, f1, auc_score]
+})
+
+summary['Default RF'] = summary['Default RF'].round(4)
+summary['Tuned RF'] = summary['Tuned RF'].round(4)
+summary['Improvement'] = (summary['Tuned RF'] - summary['Default RF']).round(4)
+
+print('\n' + '=' * 60)
+print('        RANDOM FOREST — FINAL SUMMARY')
+print('=' * 60)
+print(summary.to_string(index=False))
+print('=' * 60)
+print(f'\nBest hyperparameters: {grid_search.best_params_}')
+
+# Save the tuned best model
+import joblib
+joblib.dump(best_rf, 'rf_churn_model.pkl')
+print('\nBest Random Forest model saved successfully!')

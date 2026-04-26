@@ -21,28 +21,41 @@ Telco Customer Churn dataset (Kaggle)
 * Precision
 * Recall
 * F1 Score
+* AUC-ROC
 
 ## 👨‍👩‍👧‍👦 Team Responsibilities
 
-* Preprocessing: gayasri pethum
-* Logistic Regression: Member 1
-* Decision Tree: Member 2
-* KNN : Member: 3
-* Random Forest: Member 4
+* Preprocessing: Gayasri, Pethum
+* Logistic Regression: (Team Member)
+* Decision Tree: Samidi
+* KNN: Nethmina
+* Random Forest: Gayasri
  
 
 ## 🚀 How to Run
 
 1. Install requirements:
+   ```bash
    pip install -r requirements.txt
+   ```
 
 2. Run preprocessing:
+   ```bash
    python src/preprocess.py
+   ```
 
-3. Train models:
-   Use notebooks inside `/notebooks`
+3. Train individual models:
+   Use scripts inside `src/notebook/`
+
+4. Compare all models:
+   ```bash
+   cd src
+   python compare_models.py
+   ```
 
 ## 📌 Notes
 
 * Same dataset and preprocessing used for all models
-* Ensures fair comparison
+* SMOTE used to handle class imbalance (applied only on training data)
+* GridSearchCV with 5-fold cross-validation used for hyperparameter tuning
+* All models optimized for F1 score to ensure fair comparison
