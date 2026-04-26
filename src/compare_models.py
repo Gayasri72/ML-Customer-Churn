@@ -14,7 +14,6 @@ import warnings
 warnings.filterwarnings('ignore')
 
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
-from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -27,55 +26,22 @@ from sklearn.metrics import (
 from imblearn.over_sampling import SMOTE
 
 # ============================================================
-# 1. LOAD & PREPROCESS (with OneHotEncoding fix)
+# 1. LOAD PREPROCESSED DATASET
 # ============================================================
 print("=" * 60)
-print("  STEP 1: Loading & Preprocessing Dataset")
+print("  STEP 1: Loading Preprocessed Dataset")
 print("=" * 60)
 
-df = pd.read_csv("../data/raw/churn.csv")
-print(f"Raw shape: {df.shape}")
-
-# Drop customerID
-df.drop("customerID", axis=1, inplace=True)
-
-# Fix TotalCharges
-df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
-df.dropna(inplace=True)
-
-# Encode target
-df["Churn"] = df["Churn"].map({"Yes": 1, "No": 0})
-
-# Binary columns -> LabelEncoder (correct for 2-value features)
-# Multi-class columns -> OneHotEncoding (correct for nominal features)
-binary_cols = []
-multi_cols = []
-for col in df.select_dtypes(include="object").columns:
-    if df[col].nunique() == 2:
-        binary_cols.append(col)
-    else:
-        multi_cols.append(col)
-
-for col in binary_cols:
-    le = LabelEncoder()
-    df[col] = le.fit_transform(df[col])
-
-df = pd.get_dummies(df, columns=multi_cols, drop_first=True)
-
-# Cast bool to int
-bool_cols = df.select_dtypes(include="bool").columns
-df[bool_cols] = df[bool_cols].astype(int)
-
-print(f"After encoding: {df.shape[1]} features")
-print(f"Class distribution: {df['Churn'].value_counts().to_dict()}")
+# Load already-processed data (preprocessing done by src/preprocess.py)
+df = pd.read_csv("../data/processed/churn_processed.csv")
 
 # Separate features & target
 X = df.drop("Churn", axis=1)
 y = df["Churn"]
 
-# Scale features
-scaler = StandardScaler()
-X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+print(f"Dataset shape: {df.shape}")
+print(f"Features: {X.shape[1]}")
+print(f"Class distribution: {y.value_counts().to_dict()}")
 
 # ============================================================
 # 2. TRAIN/TEST SPLIT + SMOTE
@@ -85,7 +51,7 @@ print("  STEP 2: Train/Test Split + SMOTE")
 print("=" * 60)
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X_scaled, y, test_size=0.2, random_state=42, stratify=y
+    X, y, test_size=0.2, random_state=42, stratify=y
 )
 
 smote = SMOTE(random_state=42)

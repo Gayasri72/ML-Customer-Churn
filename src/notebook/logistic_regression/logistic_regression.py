@@ -26,7 +26,6 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
-import subprocess
 from imblearn.over_sampling import SMOTE
 
 print("Libraries loaded")
@@ -44,8 +43,9 @@ print("Libraries loaded")
 # In[25]:
 
 
-subprocess.run(["python", "preprocess.py"])
-print("Preprocessing completed")
+# Preprocessing is done separately via src/preprocess.py
+# The processed data is already saved at data/processed/churn_processed.csv
+print("Loading preprocessed data...")
 
 
 # ## 3. Load Processed Data
@@ -196,7 +196,7 @@ grid_search = GridSearchCV(
     LogisticRegression(max_iter=1000, random_state=42),
     param_grid,
     cv=5,
-    scoring='accuracy',
+    scoring='f1',
     n_jobs=-1
 )
 

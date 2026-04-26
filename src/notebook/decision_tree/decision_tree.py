@@ -21,7 +21,6 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
-import subprocess
 from imblearn.over_sampling import SMOTE
 
 print("Libraries loaded")
@@ -33,8 +32,9 @@ print("Libraries loaded")
 #==============================
 # 2. RUN EXISTING PREPROCESS.PY
 #==============================
-subprocess.run(["python", "preprocess.py"])
-print("Preprocessing completed")
+# Preprocessing is done separately via src/preprocess.py
+# The processed data is already saved at data/processed/churn_processed.csv
+print("Loading preprocessed data...")
 
 
 # In[5]:

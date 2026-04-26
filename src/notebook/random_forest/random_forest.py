@@ -30,7 +30,7 @@ plt.rcParams['font.size'] = 12
 print('Libraries imported successfully!')
 
 # Load the preprocessed dataset
-df = pd.read_csv('../../data/processed/churn_processed.csv')
+df = pd.read_csv('../../../data/processed/churn_processed.csv')
 
 print(f'Dataset shape: {df.shape}')
 print(f'Number of features: {df.shape[1] - 1}')
@@ -255,3 +255,8 @@ print('=' * 60)
 print(summary.to_string(index=False))
 print('=' * 60)
 print(f'\nBest hyperparameters: {grid_search.best_params_}')
+
+# Save the tuned best model
+import joblib
+joblib.dump(best_rf, 'rf_churn_model.pkl')
+print('\nBest Random Forest model saved successfully!')
