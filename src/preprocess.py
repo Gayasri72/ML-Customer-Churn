@@ -38,12 +38,35 @@ print("Missing values after:", missing_after)
 # =========================
 print("Encoding categorical features...")
 
-label_encoders = {}
+# --- 5a. Encode the target column (binary: Yes/No) ---
+df["Churn"] = df["Churn"].map({"Yes": 1, "No": 0})
+
+# --- 5b. Identify binary vs multi-class categorical columns ---
+binary_cols = []
+multi_cols = []
 
 for col in df.select_dtypes(include="object").columns:
+    n_unique = df[col].nunique()
+    if n_unique == 2:
+        binary_cols.append(col)
+    else:
+        multi_cols.append(col)
+
+print(f"  Binary columns  ({len(binary_cols)}): {binary_cols}")
+print(f"  Multi-class cols ({len(multi_cols)}): {multi_cols}")
+
+# --- 5c. Label-encode binary columns (0/1 is correct for 2-value features) ---
+for col in binary_cols:
     le = LabelEncoder()
     df[col] = le.fit_transform(df[col])
-    label_encoders[col] = le  # (optional: save if needed later)
+
+# --- 5d. One-Hot Encode multi-class nominal columns ---
+# drop_first=True avoids the dummy-variable trap
+df = pd.get_dummies(df, columns=multi_cols, drop_first=True)
+
+# Ensure all dummy columns are int (not bool) for compatibility with StandardScaler
+bool_cols = df.select_dtypes(include="bool").columns
+df[bool_cols] = df[bool_cols].astype(int)
 
 # =========================
 # 6. Separate features & target
